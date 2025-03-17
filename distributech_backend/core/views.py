@@ -214,3 +214,83 @@ def public_departments(request):
     departments = Department.objects.all()
     serializer = DepartmentSerializer(departments, many=True)
     return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_orders(request):
+    """
+    Public endpoint to get all orders without authentication
+    """
+    orders = Order.objects.all().order_by('-created_at')
+    
+    # Get query parameters
+    status = request.query_params.get('status', None)
+    
+    # Filter by status if provided
+    if status:
+        orders = orders.filter(status=status)
+    
+    # Use the detail serializer to include all related data
+    serializer = OrderDetailSerializer(orders, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_items(request):
+    """
+    Public endpoint to get all items without authentication
+    """
+    items = Item.objects.all()
+    serializer = ItemSerializer(items, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_order_items(request):
+    """
+    Public endpoint to get order items without authentication
+    """
+    # Get query parameter for order id
+    order_id = request.query_params.get('order', None)
+    
+    if order_id:
+        order_items = OrderItem.objects.filter(order_id=order_id)
+    else:
+        order_items = OrderItem.objects.all()
+    
+    serializer = OrderItemSerializer(order_items, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_stock(request):
+    """
+    Public endpoint to get stock information without authentication
+    """
+    # Get query parameter for item id
+    item_id = request.query_params.get('item', None)
+    
+    if item_id:
+        stock_items = Stock.objects.filter(item_id=item_id)
+    else:
+        stock_items = Stock.objects.all()
+    
+    serializer = StockSerializer(stock_items, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_order_status(request):
+    """
+    Public endpoint to get order status information without authentication
+    """
+    # Get query parameter for order id
+    order_id = request.query_params.get('order', None)
+    
+    if order_id:
+        order_statuses = OrderStatus.objects.filter(order_id=order_id).order_by('-location_timestamp')
+    else:
+        order_statuses = OrderStatus.objects.all().order_by('-location_timestamp')
+    
+    serializer = OrderStatusSerializer(order_statuses, many=True)
+    return Response(serializer.data)

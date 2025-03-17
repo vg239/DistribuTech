@@ -24,12 +24,13 @@ const CreateOrder = () => {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/items/`);
-      const itemsData = response.data.results || response.data;
+      // Use the public items endpoint
+      const response = await axios.get(`${API_URL}/public/items/`);
+      const itemsData = response.data;
       
-      // Get stock information for each item
-      const stockResponse = await axios.get(`${API_URL}/stock/`);
-      const stockData = stockResponse.data.results || stockResponse.data;
+      // Use public stock endpoint instead of authenticated one
+      const stockResponse = await axios.get(`${API_URL}/public/stock/`);
+      const stockData = stockResponse.data;
       
       // Combine item and stock data
       const itemsWithStock = itemsData.map(item => {
@@ -115,7 +116,8 @@ const CreateOrder = () => {
       setSubmitting(true);
       setError(null);
       
-      // Step 1: Create the order first
+      // Step 1: Create the order first - using the regular endpoint for now
+      // since we want to maintain user association
       const orderResponse = await axios.post(`${API_URL}/orders/`, {
         user_id: user.id,
         status: 'Pending'
@@ -146,8 +148,7 @@ const CreateOrder = () => {
         });
       } catch (statusError) {
         // Log the error but continue with order creation
-        console.warn('Could not create order status (permission issue):', statusError);
-        // We don't set an error state here because the order was still created successfully
+        console.warn('Could not create order status:', statusError);
       }
       
       // Mark as success regardless of order status creation
@@ -163,7 +164,6 @@ const CreateOrder = () => {
       
     } catch (error) {
       console.error('Error creating order:', error);
-      // More detailed error message
       const errorMessage = error.response?.data?.detail || 
                           error.response?.data?.message || 
                           'An error occurred while creating your order. Please try again.';

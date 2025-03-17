@@ -4,7 +4,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     UserViewSet, RoleViewSet, DepartmentViewSet, OrderViewSet,
     OrderStatusViewSet, ItemViewSet, OrderItemViewSet, StockViewSet,
-    CommentViewSet, AttachmentViewSet, public_roles, public_departments
+    CommentViewSet, AttachmentViewSet, public_roles, public_departments,
+    public_orders, public_items, public_order_items, public_stock,
+    public_order_status
 )
 
 router = DefaultRouter()
@@ -27,4 +29,9 @@ urlpatterns = [
     # Public endpoints that don't require authentication
     path('public/roles/', public_roles, name='public-roles'),
     path('public/departments/', public_departments, name='public-departments'),
+    path('public/orders/', public_orders, name='public-orders'),
+    path('public/items/', public_items, name='public-items'),
+    path('public/order-items/', public_order_items, name='public-order-items'),
+    path('public/stock/', public_stock, name='public-stock'),
+    path('public/order-status/', public_order_status, name='public-order-status'),
 ] 

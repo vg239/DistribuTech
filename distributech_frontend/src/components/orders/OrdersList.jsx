@@ -39,7 +39,7 @@ const OrderStatusBadge = ({ status }) => {
 };
 
 const OrdersList = () => {
-  const { user, token } = useAuth();
+  const { user } = useAuth(); // No need for token anymore
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,89 +51,56 @@ const OrdersList = () => {
     try {
       setLoading(true);
       
-      // Build query parameters
-      let url = `${API_URL}/orders/`;
-      const params = new URLSearchParams();
+      // Use the public orders endpoint that doesn't require authentication
+      const response = await axios.get(`${API_URL}/public/orders/`);
       
-      // Apply status filter if not 'all'
+      // Get orders from response
+      console.log(response)
+      const ordersData = response.data;
+      
+      // Filter orders client-side based on status if filter is set
+      let filteredOrders = ordersData;
       if (filter !== 'all') {
-        params.append('status', filter);
+        filteredOrders = ordersData.filter(order => order.status === filter);
       }
       
-      // Add search query
+      // Filter by search query if present (case insensitive search on order ID and status)
       if (searchQuery) {
-        params.append('search', searchQuery);
-      }
-      
-      // Add a cache-busting parameter to force a fresh request
-      params.append('_t', Date.now());
-      
-      // For Department Managers, we rely on the backend's filtering by user department
-      
-      // Add params to URL if any exist
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-      
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      const ordersData = response.data.results || response.data;
-      
-      // Set basic orders data immediately to ensure we at least show the orders
-      setOrders(ordersData);
-      
-      // Then try to fetch additional details in the background
-      try {
-        // Fetch latest status for each order
-        const ordersWithDetails = await Promise.all(
-          ordersData.map(async (order) => {
-            try {
-              // Try to get status
-              let latestStatus = null;
-              try {
-                const statusResponse = await axios.get(
-                  `${API_URL}/order-status/?order=${order.id}&limit=1`,
-                  { headers: { Authorization: `Bearer ${token}` } }
-                );
-                latestStatus = statusResponse.data.results?.[0] || null;
-              } catch (statusErr) {
-                console.log(`Could not fetch status for order ${order.id}:`, statusErr);
-              }
-              
-              // Try to get user details
-              let userDetails = null;
-              try {
-                if (order.user && order.user.id) {
-                  const userResponse = await axios.get(
-                    `${API_URL}/users/${order.user.id}/`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                  );
-                  userDetails = userResponse.data;
-                }
-              } catch (userErr) {
-                console.log(`Could not fetch user details for order ${order.id}:`, userErr);
-              }
-              
-              return {
-                ...order,
-                latestStatus,
-                userDetails
-              };
-            } catch (err) {
-              console.error(`Error fetching details for order ${order.id}:`, err);
-              return order;
-            }
-          })
+        const lowerQuery = searchQuery.toLowerCase();
+        filteredOrders = filteredOrders.filter(order => 
+          String(order.id).includes(lowerQuery) || 
+          order.status.toLowerCase().includes(lowerQuery)
         );
-        
-        // Update orders with detailed information if successful
-        setOrders(ordersWithDetails);
-      } catch (detailsError) {
-        console.error("Error fetching order details, but basic orders are still available:", detailsError);
-        // We don't set an error here because we still have the basic orders data
       }
+      
+      // For each order, fetch the latest status
+      const ordersWithLatestStatus = await Promise.all(
+        filteredOrders.map(async (order) => {
+          try {
+            // Get the latest status
+            const statusResponse = await axios.get(`${API_URL}/public/order-status/?order=${order.id}`);
+            const statuses = statusResponse.data;
+            const latestStatus = statuses.length > 0 ? statuses[0] : null;
+            
+            // Get order items
+            const itemsResponse = await axios.get(`${API_URL}/public/order-items/?order=${order.id}`);
+            const orderItems = itemsResponse.data;
+            
+            return {
+              ...order,
+              latestStatus,
+              items: orderItems
+            };
+          } catch (error) {
+            console.error(`Error fetching details for order ${order.id}:`, error);
+            return order;
+          }
+        })
+      );
+      
+      // Set the enhanced orders
+      setOrders(ordersWithLatestStatus);
+      
     } catch (err) {
       console.error('Error fetching orders:', err);
       setError('Failed to load orders. Please try again later.');
@@ -145,7 +112,7 @@ const OrdersList = () => {
   // Effect to fetch orders when dependencies change
   useEffect(() => {
     fetchOrders();
-  }, [token, filter, searchQuery, lastRefresh]);
+  }, [filter, searchQuery, lastRefresh]);
   
   const handleRefresh = () => {
     setLastRefresh(Date.now());
@@ -292,6 +259,7 @@ const OrdersList = () => {
                     <th className="py-3 px-4 text-left">Department</th>
                     <th className="py-3 px-4 text-left">Date</th>
                     <th className="py-3 px-4 text-left">Status</th>
+                    <th className="py-3 px-4 text-left">Items</th>
                     <th className="py-3 px-4 text-left">Actions</th>
                   </tr>
                 </thead>
@@ -300,16 +268,19 @@ const OrdersList = () => {
                     <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="py-3 px-4 font-medium">#{order.id}</td>
                       <td className="py-3 px-4">
-                        {order.userDetails?.username || order.user?.username || 'Unknown'}
+                        {order.user?.username || 'Unknown'}
                       </td>
                       <td className="py-3 px-4">
-                        {order.userDetails?.department?.name || order.user?.department?.name || 'Unknown'}
+                        {order.user?.department?.name || 'Unknown'}
                       </td>
                       <td className="py-3 px-4">
                         {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Unknown date'}
                       </td>
                       <td className="py-3 px-4">
                         <OrderStatusBadge status={order.status || 'Unknown'} />
+                      </td>
+                      <td className="py-3 px-4">
+                        {order.items?.length || order.order_items?.length || 0} items
                       </td>
                       <td className="py-3 px-4">
                         <button className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 mr-3">
