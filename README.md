@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DistribuTech - Inventory Management System
 
 <img src="https://via.placeholder.com/300x100.png?text=DistribuTech+Logo" alt="DistribuTech Logo" style="display: block; margin: 0 auto;">
@@ -154,3 +155,8 @@ For more details about this and other known issues, please refer to the [BUGFIX_
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+=======
+# DistribuTech
+
+![stirubtue](https://github.com/user-attachments/assets/731293ec-4940-4eff-9fc4-a00c1f99d3dc)
+>>>>>>> 9dca1cb8718d28a74c7ee8274f0b099ae041c485
