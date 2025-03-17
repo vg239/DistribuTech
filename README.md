@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 # DistribuTech - Inventory Management System
 
-<img src="https://via.placeholder.com/300x100.png?text=DistribuTech+Logo" alt="DistribuTech Logo" style="display: block; margin: 0 auto;">
+![distributech](https://github.com/user-attachments/assets/6e9847f9-3301-45de-a06b-75385989b1d1)
 
 ## Project Overview
 
