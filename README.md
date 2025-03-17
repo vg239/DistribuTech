@@ -12,7 +12,7 @@ DistribuTech is a web-based inventory management system designed to streamline s
 - Swaraj Singh (231CS158)
 - Vatsal Jay Gandhi (231CS164)
 
-## Repository Structure
+## Repository Structure 
 
 This repository contains both the backend and frontend codebases:
 
