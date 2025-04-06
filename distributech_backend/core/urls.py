@@ -2,11 +2,16 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
-    UserViewSet, RoleViewSet, DepartmentViewSet, OrderViewSet,
-    OrderStatusViewSet, ItemViewSet, OrderItemViewSet, StockViewSet,
+    UserViewSet, RoleViewSet, DepartmentViewSet,
+    OrderStatusViewSet, ItemViewSet, OrderItemViewSet,
     CommentViewSet, AttachmentViewSet, public_roles, public_departments,
     public_orders, public_items, public_order_items, public_stock,
     public_order_status
+)
+from .order_views import OrderViewSet
+from .stock_views import StockViewSet
+from .views_email import (
+    email_test, public_email_test, order_notification, stock_alert
 )
 
 router = DefaultRouter()
@@ -21,10 +26,20 @@ router.register(r'stock', StockViewSet)
 router.register(r'comments', CommentViewSet)
 router.register(r'attachments', AttachmentViewSet)
 
+# Register action routes manually
+stock_alert_route = StockViewSet.as_view({'post': 'alert'})
+order_notify_route = OrderViewSet.as_view({'post': 'notify'})
+
 urlpatterns = [
     path('', include(router.urls)),
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    
+    # Email endpoints
+    path('email/test/', email_test, name='email-test'),
+    path('public/email/test/', public_email_test, name='public-email-test'),
+    path('orders/<int:order_id>/notify/', order_notification, name='order-notification'),
+    path('items/<int:item_id>/stock-alert/', stock_alert, name='stock-alert'),
     
     # Public endpoints that don't require authentication
     path('public/roles/', public_roles, name='public-roles'),

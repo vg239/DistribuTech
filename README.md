@@ -1,45 +1,32 @@
-# DistribuTech - Inventory Management System
+# DistribuTech 📦
 
-![distributech](https://github.com/user-attachments/assets/6e9847f9-3301-45de-a06b-75385989b1d1)
+DistribuTech is a comprehensive supply chain and inventory management system designed for businesses that need to track inventory, manage orders, and coordinate between various departments.
 
-## Project Overview
+![DistribuTech Logo](https://via.placeholder.com/1200x400.png?text=DistribuTech+Inventory+Management)
 
-DistribuTech is a web-based inventory management system designed to streamline supply chain processes. The system enables communication and coordination between various roles in an organization while maintaining transparent tracking of supply requests and deliveries.
+## Features
 
-**Team Members**:
-- Dev Prajapati (231CS120)
-- Patel Pal Bharat (231CS240)
-- Swaraj Singh (231CS158)
-- Vatsal Jay Gandhi (231CS164)
+- **Multi-role Access Control**: Different permissions for Department Managers, Warehouse Managers, Administrators, etc.
+- **Order Management**: Create, track, and manage orders through their entire lifecycle
+- **Inventory Tracking**: Real-time stock management with automatic updates
+- **Email Notifications**: Automated alerts for low stock, order updates, and more
+- **Analytics & Reporting**: Track key metrics across your supply chain
 
-## Repository Structure 
+## Project Structure
 
-This repository contains both the backend and frontend codebases:
+The project consists of two main components:
 
-- `distributech_backend/` - Django REST Framework backend
-- `distributech_frontend/` - React/Vite frontend
+1. **Backend** (`distributech_backend/`): Django REST API
+2. **Frontend** (`distributech_frontend/`): React application
 
-## Tech Stack
-
-### Backend
-- Django/Django REST Framework
-- PostgreSQL
-- JWT Authentication
-- Role-Based Access Control (RBAC)
-
-### Frontend
-- React
-- Vite
-- Tailwind CSS
-- Framer Motion
-- Inter font
-
-## Setup Instructions
+## Setup & Installation
 
 ### Prerequisites
+
 - Python 3.8+
-- Node.js 16+
+- Node.js 14+
 - PostgreSQL
+- npm or yarn
 
 ### Backend Setup
 
@@ -51,7 +38,7 @@ This repository contains both the backend and frontend codebases:
 2. Create and activate a virtual environment:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. Install dependencies:
@@ -59,34 +46,20 @@ This repository contains both the backend and frontend codebases:
    pip install -r requirements.txt
    ```
 
-4. Set up the PostgreSQL database:
-   ```bash
-   # Make sure PostgreSQL is running
-   # You can set environment variables for database configuration:
-   # DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
-   ```
-
-5. Apply migrations:
+4. Apply migrations:
    ```bash
    python manage.py migrate
    ```
 
-6. Initialize roles and departments:
-   ```bash
-   python manage.py init_roles_depts
-   ```
-
-7. Create a superuser:
+5. Create a superuser:
    ```bash
    python manage.py createsuperuser
    ```
 
-8. Run the development server:
+6. Start the backend server:
    ```bash
    python manage.py runserver
    ```
-
-The API will be available at `http://localhost:8000/api/`.
 
 ### Frontend Setup
 
@@ -98,64 +71,82 @@ The API will be available at `http://localhost:8000/api/`.
 2. Install dependencies:
    ```bash
    npm install
+   # or
+   yarn install
    ```
 
-3. Run the development server:
+3. Start the development server:
    ```bash
    npm run dev
+   # or
+   yarn dev
    ```
 
-The frontend will be available at `http://localhost:5173/`.
+4. Access the application at `http://localhost:5173`
 
-## Features
+## Email Notification System
 
-- **User Management**: Role-based access control for different user types
-- **Order Management**: Track orders, status, and delivery details
-- **Search & Filter**: Find items, comments, and orders quickly
-- **Archive System**: Maintain complete order history
-- **Notification System**: Get updates about status changes and comments
-- **Inventory Management**: Track stock levels and set thresholds
+DistribuTech includes a comprehensive email notification system that alerts users about:
 
-## API Endpoints
+1. **Order Updates**: Notifications when orders are created, processed, shipped, etc.
+2. **Low Stock Alerts**: Warnings when inventory falls below defined thresholds
+3. **Test Emails**: For verifying system configuration
 
-The backend provides the following API endpoints:
+### Configuration
 
-- `/api/auth/token/` - Get JWT token (login)
-- `/api/auth/token/refresh/` - Refresh JWT token
-- `/api/users/` - User management
-- `/api/roles/` - Role management
-- `/api/departments/` - Department management
-- `/api/orders/` - Order management
-- `/api/order-status/` - Order status tracking
-- `/api/items/` - Item catalog
-- `/api/order-items/` - Items in orders
-- `/api/stock/` - Inventory management
-- `/api/comments/` - Comments on orders
-- `/api/attachments/` - Files attached to orders
+Email settings can be configured in the backend `settings.py` file. The system supports:
 
-## Maintenance Tools
+- SMTP email backends for production
+- Console backend for development (prints emails to console)
+- File-based backend for testing (saves emails to a directory)
+- Mailtrap integration for testing real emails without sending to real recipients
 
-### Order Status Repair Tool
+See `distributech_backend/EMAIL_NOTIFICATION_GUIDE.md` for detailed instructions.
 
-The DistribuTech system includes a utility script for administrators to fix orders that might be missing status information due to permission issues:
+### Testing Email Functionality
+
+Use the provided management commands to test email functionality:
 
 ```bash
-# Make the script executable
-chmod +x fix_order_statuses.sh
+# Send a test email
+python manage.py send_test_email recipient@example.com
 
-# Run the script
-./fix_order_statuses.sh
+# Check stock levels and send alerts
+python manage.py check_stock_levels
+
+# Send notification for a specific order
+python manage.py send_order_notification 123
 ```
 
-This tool is especially useful for fixing orders created by managers who lack permission to create order status entries.
+## API Documentation
 
-For more details about this and other known issues, please refer to the [BUGFIX_NOTES.md](./BUGFIX_NOTES.md) file.
+The RESTful API includes endpoints for:
+
+- User authentication and management
+- Order creation and tracking
+- Inventory management
+- Email notifications
+- Analytical data
+
+For detailed API documentation, run the backend server and visit:
+`http://localhost:8000/api/docs/`
+
+## Roles & Permissions
+
+The system implements role-based access control with the following roles:
+
+1. **SuperAdmin**: Complete access to all functionality
+2. **Administrator**: Manage users, departments, and system settings
+3. **Department Manager**: Create orders and track deliveries
+4. **Warehouse Manager**: Manage inventory and process orders
+5. **Supplier**: Update stock levels and manage product catalog
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-=======
-# DistribuTech
 
-![stirubtue](https://github.com/user-attachments/assets/731293ec-4940-4eff-9fc4-a00c1f99d3dc)
->>>>>>> 9dca1cb8718d28a74c7ee8274f0b099ae041c485
+## Acknowledgements
+
+- Team Members
+- Faculty Mentors
+- Open Source Communities

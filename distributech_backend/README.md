@@ -28,6 +28,9 @@ distributech_backend/
 ├── core/                      # Main application
 │   ├── management/            # Custom management commands
 │   │   └── commands/          # Management command files
+│   │       ├── check_stock_levels.py  # Checks stock and sends alerts
+│   │       ├── send_order_notification.py  # Sends order notifications
+│   │       └── send_test_email.py  # Tests email configuration
 │   ├── migrations/            # Database migrations
 │   ├── __init__.py            # Package initialization
 │   ├── admin.py               # Django Admin configuration
@@ -171,6 +174,58 @@ class OrderViewSet(viewsets.ModelViewSet):
             permission_classes = [permissions.IsAuthenticated]
         return [permission() for permission in permission_classes]
 ```
+
+### Email Notification System
+
+The system includes an email notification system for:
+
+1. **Order Notifications**: Sent when orders are created or updated
+2. **Low Stock Alerts**: Sent when inventory items fall below their minimum threshold
+3. **Test Emails**: For verifying email configuration
+
+#### Email Utils
+
+The email utilities are in `core/utils/email_utils.py` and provide functions for sending various types of emails:
+
+- `send_email`: Base function for sending emails
+- `send_order_notification`: Sends notifications for order updates
+- `send_stock_alert`: Sends alerts for low stock levels
+- `send_test_email`: Sends a test email to verify configuration
+
+#### Management Commands
+
+Command-line utilities for testing and using the email system:
+
+- `check_stock_levels`: Checks inventory and sends alerts for low stock
+  ```bash
+  python manage.py check_stock_levels [--email user@example.com] [--dry-run]
+  ```
+
+- `send_order_notification`: Sends a notification for a specific order
+  ```bash
+  python manage.py send_order_notification ORDER_ID [--email user@example.com] [--dry-run]
+  ```
+
+- `send_test_email`: Sends a test email to verify configuration
+  ```bash
+  python manage.py send_test_email recipient@example.com
+  ```
+
+#### Email Configuration
+
+Email settings are configured in `settings.py`. For testing, we use Mailtrap:
+
+```python
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+EMAIL_PORT = 2525
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = '9b95507e4cc941'
+EMAIL_HOST_PASSWORD = '0998606ce3fb67'
+DEFAULT_FROM_EMAIL = 'DistribuTech <noreply@distributech.com>'
+```
+
+For a detailed guide on using the email notification system, see `EMAIL_NOTIFICATION_GUIDE.md`.
 
 ## Roles and Permissions
 

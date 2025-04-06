@@ -94,6 +94,45 @@ class OrderViewSet(viewsets.ModelViewSet):
         elif user.role.name == 'Department Manager':
             return Order.objects.filter(user__department=user.department)
         return Order.objects.none()
+    
+    def perform_create(self, serializer):
+        """Create order and send notification email"""
+        # Save the order
+        order = serializer.save()
+        
+        # Send email notification asynchronously (don't block the request)
+        from .utils.email_utils import send_order_notification
+        import threading
+        
+        # Create a thread to send the email
+        email_thread = threading.Thread(
+            target=send_order_notification,
+            args=(order,)
+        )
+        email_thread.start()
+        
+    @action(detail=True, methods=['post'])
+    def notify(self, request, pk=None):
+        """Manually send notification email for an order"""
+        order = self.get_object()
+        
+        # Get email from request or use order user's email
+        email = request.data.get('email', order.user.email)
+        
+        # Send notification
+        from .utils.email_utils import send_order_notification
+        success = send_order_notification(order, email)
+        
+        if success:
+            return Response({
+                'success': True,
+                'message': f'Order notification for Order #{order.id} sent successfully'
+            })
+        else:
+            return Response({
+                'success': False,
+                'message': 'Failed to send order notification. Check server logs for details.'
+            }, status=500)
 
 class OrderStatusViewSet(viewsets.ModelViewSet):
     queryset = OrderStatus.objects.all().order_by('-location_timestamp')
