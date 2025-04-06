@@ -333,3 +333,105 @@ def public_order_status(request):
     
     serializer = OrderStatusSerializer(order_statuses, many=True)
     return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_order_detail(request, order_id):
+    """
+    Get detailed information about a specific order including items, statuses, etc.
+    This endpoint is public and doesn't require authentication.
+    
+    URL parameters:
+    - order_id: ID of the order to fetch
+    """
+    try:
+        # Get order with related data
+        order = Order.objects.get(id=order_id)
+        
+        # Get order items
+        order_items = OrderItem.objects.filter(order=order).select_related('item')
+        
+        # Get order statuses
+        order_statuses = OrderStatus.objects.filter(order=order).order_by('-location_timestamp')
+        
+        # Get comments
+        comments = Comment.objects.filter(order=order).select_related('user').order_by('-created_at')
+        
+        # Get attachments
+        attachments = Attachment.objects.filter(order=order)
+        
+        # Format order data
+        order_data = {
+            'id': order.id,
+            'status': order.status,
+            'created_at': order.created_at,
+            'updated_at': order.updated_at,
+            'user': {
+                'id': order.user.id,
+                'username': order.user.username,
+                'email': order.user.email,
+                'department': {
+                    'id': order.user.department.id,
+                    'name': order.user.department.name
+                }
+            },
+            'items': [
+                {
+                    'id': order_item.id,
+                    'item': {
+                        'id': order_item.item.id,
+                        'name': order_item.item.name,
+                        'description': order_item.item.description,
+                        'measurement_unit': order_item.item.measurement_unit,
+                        'price': float(order_item.item.price)
+                    },
+                    'quantity': order_item.quantity,
+                    'price_at_order_time': float(order_item.price_at_order_time),
+                    'total': float(order_item.quantity * order_item.price_at_order_time)
+                }
+                for order_item in order_items
+            ],
+            'statuses': [
+                {
+                    'id': status.id,
+                    'status': status.status,
+                    'current_location': status.current_location,
+                    'location_timestamp': status.location_timestamp,
+                    'remarks': status.remarks,
+                    'expected_delivery_date': status.expected_delivery_date,
+                    'updated_by': status.updated_by.username if status.updated_by else None
+                }
+                for status in order_statuses
+            ],
+            'comments': [
+                {
+                    'id': comment.id,
+                    'comment_text': comment.comment_text,
+                    'created_at': comment.created_at,
+                    'user': {
+                        'id': comment.user.id,
+                        'username': comment.user.username
+                    }
+                }
+                for comment in comments
+            ],
+            'attachments': [
+                {
+                    'id': attachment.id,
+                    'file_url': attachment.file_url,
+                    'uploaded_at': attachment.uploaded_at
+                }
+                for attachment in attachments
+            ]
+        }
+        
+        # Calculate order total
+        total = sum(item['total'] for item in order_data['items'])
+        order_data['total'] = total
+        
+        return Response(order_data)
+        
+    except Order.DoesNotExist:
+        return Response({'error': f'Order with ID {order_id} not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)

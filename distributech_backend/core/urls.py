@@ -6,7 +6,7 @@ from .views import (
     OrderStatusViewSet, ItemViewSet, OrderItemViewSet,
     CommentViewSet, AttachmentViewSet, public_roles, public_departments,
     public_orders, public_items, public_order_items, public_stock,
-    public_order_status
+    public_order_status, public_order_detail
 )
 from .order_views import OrderViewSet
 from .stock_views import StockViewSet
@@ -45,6 +45,7 @@ urlpatterns = [
     path('public/roles/', public_roles, name='public-roles'),
     path('public/departments/', public_departments, name='public-departments'),
     path('public/orders/', public_orders, name='public-orders'),
+    path('public/orders/<int:order_id>/', public_order_detail, name='public-order-detail'),
     path('public/items/', public_items, name='public-items'),
     path('public/order-items/', public_order_items, name='public-order-items'),
     path('public/stock/', public_stock, name='public-stock'),

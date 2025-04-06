@@ -23,19 +23,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return OrderDetailSerializer
         return OrderSerializer
     
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            permission_classes = [permissions.IsAuthenticated]
-        elif self.action == 'create':
-            permission_classes = [permissions.IsAuthenticated, IsDepartmentManager]
-        elif self.action in ['update', 'partial_update']:
-            permission_classes = [permissions.IsAuthenticated, IsDepartmentManager | IsWarehouseManager | IsSuperAdmin]
-        elif self.action == 'destroy':
-            permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
-        else:
-            permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
-        return [permission() for permission in permission_classes]
-    
+
     def get_queryset(self):
         user = self.request.user
         if user.role.name in ['SuperAdmin', 'Administrator', 'Warehouse Manager', 'Supplier']:

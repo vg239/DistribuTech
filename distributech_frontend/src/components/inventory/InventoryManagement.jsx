@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
+import ItemDetailForm from './ItemDetailForm';
 
 const API_URL = 'http://localhost:8000/api';
 
@@ -21,6 +22,21 @@ const InventoryManagement = () => {
   const [filterLowStock, setFilterLowStock] = useState(false);
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
+  
+  // New state for item detail modal
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  
+  // New state for loading details
+  const [loadingItemId, setLoadingItemId] = useState(null);
+  
+  // Add success message state
+  const [successMessage, setSuccessMessage] = useState(null);
+  
+  // Add state for stock alert form and status
+  const [alertEmail, setAlertEmail] = useState('');
+  const [alertLoading, setAlertLoading] = useState(false);
+  const [alertResponse, setAlertResponse] = useState(null);
   
   useEffect(() => {
     fetchInventory();
@@ -192,24 +208,50 @@ const InventoryManagement = () => {
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
     
-    if (isAdding) {
-      console.log('Submitting new item:', { item: itemForm, stock: stockForm });
-      // Add implementation for adding item
-      // For now, we'll just show what would be sent
-      alert('Add functionality would submit: ' + JSON.stringify({ item: itemForm, stock: stockForm }));
-    } else if (isEditing) {
-      console.log('Updating item:', currentItem.id, { item: itemForm, stock: stockForm });
-      // Add implementation for editing item
-      // For now, we'll just show what would be sent
-      alert('Edit functionality would submit: ' + JSON.stringify({ id: currentItem.id, item: itemForm, stock: stockForm }));
+    try {
+      if (isAdding) {
+        console.log('Submitting new item:', { item: itemForm, stock: stockForm });
+        
+        // First create the item
+        const itemResponse = await axios.post(`${API_URL}/items/`, {
+          name: itemForm.name,
+          description: itemForm.description,
+          measurement_unit: itemForm.measurement_unit,
+          price: itemForm.price
+        });
+        
+        console.log('Item created:', itemResponse.data);
+        
+        // Then create the stock for this item
+        const stockResponse = await axios.post(`${API_URL}/stock/`, {
+          item: itemResponse.data.id,
+          current_stock: stockForm.current_stock,
+          minimum_threshold: stockForm.minimum_threshold
+        });
+        
+        console.log('Stock created:', stockResponse.data);
+        
+        // After successful API calls, refresh the inventory
+        setIsAdding(false);
+        setSuccessMessage(`Item "${itemResponse.data.name}" added successfully!`);
+        
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 5000);
+        
+        fetchInventory();
+      }
+    } catch (err) {
+      console.error('Error submitting item:', err);
+      setError(err.response?.data?.detail || 'Failed to create item. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    
-    // In a real app, you would make the API calls here
-    // After successful API call:
-    setIsEditing(false);
-    setIsAdding(false);
-    fetchInventory(); // Refresh data
   };
   
   // Filter and search handlers
@@ -229,6 +271,80 @@ const InventoryManagement = () => {
       // If sorting by a new field, default to ascending
       setSortBy(field);
       setSortOrder('asc');
+    }
+  };
+  
+  // New function to view item details
+  const handleViewDetails = async (item) => {
+    console.log('Viewing details for item:', item);
+    setLoadingItemId(item.id);
+    
+    try {
+      // Fetch the latest item data to ensure we have the most current information
+      const itemResponse = await axios.get(`${API_URL}/public/items/${item.id}/`);
+      let stockData = null;
+      
+      if (item.stock) {
+        const stockResponse = await axios.get(`${API_URL}/public/stock/${item.stock.id}/`);
+        stockData = stockResponse.data;
+      }
+      
+      setSelectedItem({
+        ...itemResponse.data,
+        stock: stockData
+      });
+      
+      setDetailModalOpen(true);
+    } catch (err) {
+      console.error('Error fetching item details:', err);
+      setError('Failed to load item details. Please try again.');
+    } finally {
+      setLoadingItemId(null);
+    }
+  };
+  
+  const handleItemUpdate = (updatedData) => {
+    console.log('Item updated:', updatedData);
+    
+    // Update the item in the inventory array
+    const updatedInventory = inventory.map(item => {
+      if (item.id === updatedData.item.id) {
+        return {
+          ...updatedData.item,
+          stock: updatedData.stock
+        };
+      }
+      return item;
+    });
+    
+    // Update the state
+    setInventory(updatedInventory);
+    setIsEditing(false);
+    setCurrentItem(null);
+  };
+  
+  // Add function to handle sending stock alerts
+  const handleSendAlert = async (stockId) => {
+    setAlertLoading(true);
+    setAlertResponse(null);
+    
+    try {
+      const response = await axios.post(`${API_URL}/stock/${stockId}/alert/`, {
+        email: alertEmail || undefined
+      });
+      
+      setAlertResponse({
+        success: true,
+        message: response.data.message || 'Stock alert sent successfully!'
+      });
+    } catch (err) {
+      setAlertResponse({
+        success: false,
+        message: err.response?.data?.message || 'Failed to send alert.'
+      });
+      console.error('Error sending stock alert:', err);
+    } finally {
+      setAlertLoading(false);
     }
   };
   
@@ -267,6 +383,12 @@ const InventoryManagement = () => {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
+          </div>
+        )}
+        
+        {successMessage && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+            {successMessage}
           </div>
         )}
         
@@ -309,12 +431,22 @@ const InventoryManagement = () => {
           </div>
         </div>
         
-        {/* Edit/Add Form */}
-        {(isEditing || isAdding) && (
+        {/* Edit/Add Form - replaced with ItemDetailForm component when editing */}
+        {isEditing && currentItem && currentItem.stock && (
           <div className="card mb-6">
-            <h2 className="text-xl font-bold mb-4">
-              {isAdding ? 'Add New Item' : 'Edit Item'}
-            </h2>
+            <ItemDetailForm 
+              item={currentItem} 
+              stock={currentItem.stock}
+              onUpdate={handleItemUpdate}
+              onClose={() => setIsEditing(false)}
+            />
+          </div>
+        )}
+        
+        {/* Keep the original form only for adding new items */}
+        {isAdding && (
+          <div className="card mb-6">
+            <h2 className="text-xl font-bold mb-4">Add New Item</h2>
             
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -420,7 +552,7 @@ const InventoryManagement = () => {
                     type="submit"
                     className="button-primary"
                   >
-                    {isAdding ? 'Add Item' : 'Save Changes'}
+                    Add Item
                   </button>
                 </div>
               </div>
@@ -555,8 +687,16 @@ const InventoryManagement = () => {
                             Edit
                           </button>
                         )}
-                        <button className="text-secondary-600 hover:text-secondary-800 dark:text-secondary-400 dark:hover:text-secondary-300">
-                          View Details
+                        <button 
+                          className="text-secondary-600 hover:text-secondary-800 dark:text-secondary-400 dark:hover:text-secondary-300"
+                          onClick={() => handleViewDetails(item)}
+                          disabled={loadingItemId === item.id}
+                        >
+                          {loadingItemId === item.id ? (
+                            <span className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-secondary-600 dark:border-secondary-400"></span>
+                          ) : (
+                            'View Details'
+                          )}
                         </button>
                       </td>
                     </tr>
@@ -566,6 +706,139 @@ const InventoryManagement = () => {
             </div>
           )}
         </div>
+        
+        {/* Item Detail Modal */}
+        {detailModalOpen && selectedItem && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold gradient-text">Item Details</h2>
+                  <button 
+                    onClick={() => {
+                      setDetailModalOpen(false);
+                      setAlertResponse(null);
+                      setAlertEmail('');
+                    }}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-3">Item Information</h3>
+                    <p><span className="font-medium">Name:</span> {selectedItem.name}</p>
+                    <p><span className="font-medium">Description:</span> {selectedItem.description}</p>
+                    <p><span className="font-medium">Price:</span> ${parseFloat(selectedItem.price).toFixed(2)}</p>
+                    <p><span className="font-medium">Measurement Unit:</span> {selectedItem.measurement_unit}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-xl font-semibold mb-3">Stock Information</h3>
+                    {selectedItem.stock ? (
+                      <>
+                        <p><span className="font-medium">Current Stock:</span> {selectedItem.stock.current_stock} {selectedItem.measurement_unit}</p>
+                        <p><span className="font-medium">Minimum Threshold:</span> {selectedItem.stock.minimum_threshold} {selectedItem.measurement_unit}</p>
+                        <p><span className="font-medium">Status:</span> 
+                          {selectedItem.stock.current_stock <= selectedItem.stock.minimum_threshold ? (
+                            <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium dark:bg-red-900 dark:text-red-300">
+                              Low Stock
+                            </span>
+                          ) : (
+                            <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium dark:bg-green-900 dark:text-green-300">
+                              In Stock
+                            </span>
+                          )}
+                        </p>
+                        {selectedItem.stock.supplier && (
+                          <p><span className="font-medium">Supplier:</span> {selectedItem.stock.supplier}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p>No stock information available</p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Stock Alert Section - Only show for items with low stock */}
+                {selectedItem.stock && selectedItem.stock.current_stock <= selectedItem.stock.minimum_threshold && (
+                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="text-xl font-semibold gradient-text mb-4">Send Stock Alert</h3>
+                    
+                    <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+                      <p>This item is currently below minimum threshold. Consider sending a stock alert.</p>
+                    </div>
+                    
+                    {alertResponse && (
+                      <div className={`${alertResponse.success ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'} px-4 py-3 border rounded mb-4`}>
+                        {alertResponse.message}
+                      </div>
+                    )}
+                    
+                    <div className="mt-4">
+                      <div className="mb-4">
+                        <label htmlFor="alertEmail" className="form-label">Notification Email (Optional)</label>
+                        <input
+                          type="email"
+                          id="alertEmail"
+                          value={alertEmail}
+                          onChange={(e) => setAlertEmail(e.target.value)}
+                          className="form-input"
+                          placeholder="Enter email or leave empty for default recipient"
+                        />
+                        <p className="text-sm text-gray-500 mt-1">
+                          If left empty, the alert will be sent to the system's default recipient.
+                        </p>
+                      </div>
+                      
+                      <button
+                        onClick={() => handleSendAlert(selectedItem.stock.id)}
+                        className="button-secondary w-full"
+                        disabled={alertLoading}
+                      >
+                        {alertLoading ? (
+                          <div className="inline-block animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
+                        ) : (
+                          'Send Stock Alert'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-end space-x-3 mt-6">
+                  {(user?.role?.name === 'Warehouse Manager' || user?.role?.name === 'SuperAdmin') && selectedItem.stock && (
+                    <button
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        setAlertResponse(null);
+                        setAlertEmail('');
+                        handleEditItem(selectedItem);
+                      }}
+                      className="button-primary"
+                    >
+                      Edit Item
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setDetailModalOpen(false);
+                      setAlertResponse(null);
+                      setAlertEmail('');
+                    }}
+                    className="button-outline"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );

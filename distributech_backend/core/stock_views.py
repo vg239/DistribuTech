@@ -18,16 +18,7 @@ class StockViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['item', 'supplier']
     
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            permission_classes = [permissions.IsAuthenticated]
-        elif self.action in ['create', 'update', 'partial_update']:
-            permission_classes = [permissions.IsAuthenticated, IsWarehouseManager | IsSupplier | IsSuperAdmin]
-        elif self.action == 'destroy':
-            permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
-        else:
-            permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
-        return [permission() for permission in permission_classes]
+
     
     def perform_create(self, serializer):
         """Create stock and check if alerts need to be sent"""

@@ -1,1 +1,4 @@
 venv
+settings.py
+distributech/settings.py
+distributech_backend/distributech/settings.py
