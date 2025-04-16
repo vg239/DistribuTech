@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import OrderStatusUpdateForm from './OrderStatusUpdateForm';
 
 const API_URL = 'http://localhost:8000/api';
 
@@ -48,6 +49,12 @@ const OrdersList = () => {
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetailModalOpen, setOrderDetailModalOpen] = useState(false);
+  const [statusUpdateFormOpen, setStatusUpdateFormOpen] = useState(false);
+  const [statusUpdateSuccess, setStatusUpdateSuccess] = useState(false);
+  const [updateButtonLoading, setUpdateButtonLoading] = useState(false);
+  
+  // Check if user is admin (admin123 username or Administrator role)
+  const isAdmin = user?.username === 'admin123' || user?.role?.name === 'Administrator';
   
   const fetchOrders = async () => {
     try {
@@ -57,7 +64,6 @@ const OrdersList = () => {
       const response = await axios.get(`${API_URL}/public/orders/`);
       
       // Get orders from response
-      console.log(response)
       const ordersData = response.data;
       
       // Filter orders client-side based on status if filter is set
@@ -158,9 +164,66 @@ const OrdersList = () => {
     }
   };
   
+  // Handle clicking "Update Status" from the table row
+  const handleUpdateStatusFromTable = async (orderId) => {
+    setUpdateButtonLoading(true);
+    try {
+      await handleViewOrder(orderId);
+      // Wait a moment for the modal to open and render
+      setTimeout(() => {
+        openStatusUpdateForm();
+        setUpdateButtonLoading(false);
+      }, 500);
+    } catch (error) {
+      setUpdateButtonLoading(false);
+      setError('Failed to load order details for update. Please try again.');
+    }
+  };
+  
   const closeOrderDetailModal = () => {
     setOrderDetailModalOpen(false);
     setSelectedOrder(null);
+    setStatusUpdateFormOpen(false);
+    
+    // If we had a successful status update, refresh the orders list
+    if (statusUpdateSuccess) {
+      setStatusUpdateSuccess(false);
+      handleRefresh();
+    }
+  };
+  
+  const openStatusUpdateForm = () => {
+    setStatusUpdateFormOpen(true);
+  };
+  
+  const closeStatusUpdateForm = () => {
+    setStatusUpdateFormOpen(false);
+  };
+  
+  const handleStatusUpdated = (updatedStatus) => {
+    // Update the selected order with the new status
+    if (selectedOrder) {
+      setSelectedOrder(prev => ({
+        ...prev,
+        status: updatedStatus.status,
+        statuses: [updatedStatus, ...(prev.statuses || [])]
+      }));
+      
+      // Also update the order in the main list
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === selectedOrder.id 
+            ? { ...order, status: updatedStatus.status }
+            : order
+        )
+      );
+      
+      // Set status update success flag
+      setStatusUpdateSuccess(true);
+      
+      // Reset the form state
+      setStatusUpdateFormOpen(false);
+    }
   };
   
   return (
@@ -207,6 +270,12 @@ const OrdersList = () => {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
+          </div>
+        )}
+        
+        {statusUpdateSuccess && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+            Order status has been updated successfully. Email notification has been sent.
           </div>
         )}
         
@@ -307,12 +376,24 @@ const OrdersList = () => {
                         <button 
                           className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 mr-3"
                           onClick={() => handleViewOrder(order.id)}
+                          disabled={loading || updateButtonLoading}
                         >
                           View
                         </button>
-                        {user?.role?.name === 'Warehouse Manager' && (
-                          <button className="text-secondary-600 hover:text-secondary-800 dark:text-secondary-400 dark:hover:text-secondary-300">
-                            Update
+                        {isAdmin && (
+                          <button 
+                            className="text-secondary-600 hover:text-secondary-800 dark:text-secondary-400 dark:hover:text-secondary-300 inline-flex items-center"
+                            onClick={() => handleUpdateStatusFromTable(order.id)}
+                            disabled={loading || updateButtonLoading}
+                          >
+                            {updateButtonLoading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-secondary-600 mr-1"></div>
+                                <span>Updating...</span>
+                              </>
+                            ) : (
+                              'Update Status'
+                            )}
                           </button>
                         )}
                       </td>
@@ -328,132 +409,159 @@ const OrdersList = () => {
         {orderDetailModalOpen && selectedOrder && (
           <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold gradient-text">Order #{selectedOrder.id}</h2>
-                  <button 
-                    onClick={closeOrderDetailModal}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Order Information</h3>
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                      <p className="mb-1"><span className="font-medium">Status:</span> <OrderStatusBadge status={selectedOrder.status} /></p>
-                      <p className="mb-1"><span className="font-medium">Created:</span> {new Date(selectedOrder.created_at).toLocaleString()}</p>
-                      <p className="mb-1"><span className="font-medium">Last Updated:</span> {new Date(selectedOrder.updated_at).toLocaleString()}</p>
-                      <p className="mb-1"><span className="font-medium">Total:</span> ${selectedOrder.total.toFixed(2)}</p>
+              {statusUpdateFormOpen ? (
+                <OrderStatusUpdateForm 
+                  order={selectedOrder} 
+                  onStatusUpdated={handleStatusUpdated}
+                  onClose={closeStatusUpdateForm}
+                />
+              ) : (
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold gradient-text">Order #{selectedOrder.id}</h2>
+                    <div className="flex items-center">
+                      {isAdmin && (
+                        <button 
+                          onClick={openStatusUpdateForm}
+                          className="text-secondary-600 hover:text-secondary-800 dark:text-secondary-400 dark:hover:text-secondary-300 mr-4 inline-flex items-center"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Update Status
+                        </button>
+                      )}
+                      <button 
+                        onClick={closeOrderDetailModal}
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                   
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Customer Information</h3>
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                      <p className="mb-1"><span className="font-medium">Name:</span> {selectedOrder.user.username}</p>
-                      <p className="mb-1"><span className="font-medium">Email:</span> {selectedOrder.user.email}</p>
-                      <p className="mb-1"><span className="font-medium">Department:</span> {selectedOrder.user.department.name}</p>
+                  {statusUpdateSuccess && (
+                    <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                      Order status has been updated successfully. Email notification has been sent.
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Order Information</h3>
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <p className="mb-1"><span className="font-medium">Status:</span> <OrderStatusBadge status={selectedOrder.status} /></p>
+                        <p className="mb-1"><span className="font-medium">Created:</span> {new Date(selectedOrder.created_at).toLocaleString()}</p>
+                        <p className="mb-1"><span className="font-medium">Last Updated:</span> {new Date(selectedOrder.updated_at).toLocaleString()}</p>
+                        <p className="mb-1"><span className="font-medium">Total:</span> ${selectedOrder.total.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Customer Information</h3>
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <p className="mb-1"><span className="font-medium">Name:</span> {selectedOrder.user.username}</p>
+                        <p className="mb-1"><span className="font-medium">Email:</span> {selectedOrder.user.email}</p>
+                        <p className="mb-1"><span className="font-medium">Department:</span> {selectedOrder.user.department.name}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Order Items</h3>
-                <div className="overflow-x-auto bg-gray-50 dark:bg-gray-700 rounded-lg mb-6">
-                  <table className="w-full">
-                    <thead className="bg-gray-100 dark:bg-gray-600">
-                      <tr>
-                        <th className="py-2 px-4 text-left">Item</th>
-                        <th className="py-2 px-4 text-left">Quantity</th>
-                        <th className="py-2 px-4 text-left">Unit Price</th>
-                        <th className="py-2 px-4 text-left">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                      {selectedOrder.items.map(item => (
-                        <tr key={item.id}>
-                          <td className="py-2 px-4">
-                            <div>
-                              <div className="font-medium">{item.item.name}</div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">{item.item.description}</div>
-                            </div>
-                          </td>
-                          <td className="py-2 px-4">{item.quantity} {item.item.measurement_unit || 'units'}</td>
-                          <td className="py-2 px-4">${item.price_at_order_time.toFixed(2)}</td>
-                          <td className="py-2 px-4">${item.total.toFixed(2)}</td>
+                  
+                  <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Order Items</h3>
+                  <div className="overflow-x-auto bg-gray-50 dark:bg-gray-700 rounded-lg mb-6">
+                    <table className="w-full">
+                      <thead className="bg-gray-100 dark:bg-gray-600">
+                        <tr>
+                          <th className="py-2 px-4 text-left">Item</th>
+                          <th className="py-2 px-4 text-left">Quantity</th>
+                          <th className="py-2 px-4 text-left">Unit Price</th>
+                          <th className="py-2 px-4 text-left">Total</th>
                         </tr>
-                      ))}
-                      <tr className="bg-gray-100 dark:bg-gray-600">
-                        <td colSpan="3" className="py-2 px-4 text-right font-bold">Total:</td>
-                        <td className="py-2 px-4 font-bold">${selectedOrder.total.toFixed(2)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                
-                {selectedOrder.statuses.length > 0 && (
-                  <>
-                    <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Order Status History</h3>
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-                      <ul className="space-y-3">
-                        {selectedOrder.statuses.map(status => (
-                          <li key={status.id} className="border-l-2 border-primary-500 pl-4">
-                            <div className="font-medium"><OrderStatusBadge status={status.status} /></div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {new Date(status.location_timestamp).toLocaleString()}
-                              {status.updated_by && ` by ${status.updated_by}`}
-                            </div>
-                            {status.remarks && <div className="mt-1">{status.remarks}</div>}
-                            {status.expected_delivery_date && (
-                              <div className="mt-1 text-sm">
-                                Expected delivery: {new Date(status.expected_delivery_date).toLocaleDateString()}
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                        {selectedOrder.items.map(item => (
+                          <tr key={item.id}>
+                            <td className="py-2 px-4">
+                              <div>
+                                <div className="font-medium">{item.item.name}</div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">{item.item.description}</div>
                               </div>
-                            )}
-                          </li>
+                            </td>
+                            <td className="py-2 px-4">{item.quantity} {item.item.measurement_unit || 'units'}</td>
+                            <td className="py-2 px-4">${item.price_at_order_time.toFixed(2)}</td>
+                            <td className="py-2 px-4">${item.total.toFixed(2)}</td>
+                          </tr>
                         ))}
-                      </ul>
-                    </div>
-                  </>
-                )}
-                
-                {selectedOrder.comments.length > 0 && (
-                  <>
-                    <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Comments</h3>
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-                      <ul className="space-y-3">
-                        {selectedOrder.comments.map(comment => (
-                          <li key={comment.id} className="border-l-2 border-secondary-500 pl-4">
-                            <div className="font-medium">{comment.user.username}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {new Date(comment.created_at).toLocaleString()}
-                            </div>
-                            <div className="mt-1">{comment.comment_text}</div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </>
-                )}
-                
-                <div className="flex justify-end space-x-3">
-                  <button 
-                    onClick={closeOrderDetailModal} 
-                    className="button-outline"
-                  >
-                    Close
-                  </button>
-                  <button 
-                    className="button-primary"
-                    onClick={() => window.print()}
-                  >
-                    Print Order
-                  </button>
+                        <tr className="bg-gray-100 dark:bg-gray-600">
+                          <td colSpan="3" className="py-2 px-4 text-right font-bold">Total:</td>
+                          <td className="py-2 px-4 font-bold">${selectedOrder.total.toFixed(2)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {selectedOrder.statuses.length > 0 && (
+                    <>
+                      <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Order Status History</h3>
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+                        <ul className="space-y-3">
+                          {selectedOrder.statuses.map(status => (
+                            <li key={status.id} className="border-l-2 border-primary-500 pl-4">
+                              <div className="font-medium"><OrderStatusBadge status={status.status} /></div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {new Date(status.location_timestamp).toLocaleString()}
+                                {status.updated_by && ` by ${status.updated_by}`}
+                              </div>
+                              {status.remarks && <div className="mt-1">{status.remarks}</div>}
+                              {status.expected_delivery_date && (
+                                <div className="mt-1 text-sm">
+                                  Expected delivery: {new Date(status.expected_delivery_date).toLocaleDateString()}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                  
+                  {selectedOrder.comments.length > 0 && (
+                    <>
+                      <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Comments</h3>
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+                        <ul className="space-y-3">
+                          {selectedOrder.comments.map(comment => (
+                            <li key={comment.id} className="border-l-2 border-secondary-500 pl-4">
+                              <div className="font-medium">{comment.user.username}</div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {new Date(comment.created_at).toLocaleString()}
+                              </div>
+                              <div className="mt-1">{comment.comment_text}</div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                  
+                  <div className="flex justify-end space-x-3">
+                    <button 
+                      onClick={closeOrderDetailModal} 
+                      className="button-outline"
+                    >
+                      Close
+                    </button>
+                    <button 
+                      className="button-primary"
+                      onClick={() => window.print()}
+                    >
+                      Print Order
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
