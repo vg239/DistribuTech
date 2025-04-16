@@ -1,2 +1,7 @@
 .env
 distributech_backend/distributech/settings.py
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
