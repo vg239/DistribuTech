@@ -188,3 +188,31 @@ class Attachment(models.Model):
     
     def __str__(self):
         return f"Attachment for Order #{self.order.id}"
+
+# Chat Conversation model
+class Conversation(models.Model):
+    id = models.AutoField(primary_key=True)
+    participants = models.ManyToManyField(User, related_name='conversations')
+    started_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Conversation #{self.id}"
+    
+    class Meta:
+        ordering = ['-updated_at']
+
+# Message model
+class Message(models.Model):
+    id = models.AutoField(primary_key=True)
+    conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
+    content = models.TextField(null=False, blank=False)
+    timestamp = models.DateTimeField(default=timezone.now)
+    is_read = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f"Message from {self.sender.username} in Conversation #{self.conversation.id}"
+    
+    class Meta:
+        ordering = ['timestamp']

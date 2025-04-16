@@ -10,6 +10,7 @@ import StableDashboard from './components/dashboard/StableDashboard';
 import OrdersList from './components/orders/OrdersList';
 import CreateOrder from './components/orders/CreateOrder';
 import InventoryManagement from './components/inventory/InventoryManagement';
+import ChatPage from './components/chat/ChatPage';
 import './App.css';
 
 // Protected route component
@@ -78,6 +79,12 @@ function App() {
                 <Route path="/inventory" element={
                   <ProtectedRoute allowedRoles={['Warehouse Manager', 'SuperAdmin', 'Administrator']}>
                     <InventoryManagement />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/chat" element={
+                  <ProtectedRoute>
+                    <ChatPage />
                   </ProtectedRoute>
                 } />
                 

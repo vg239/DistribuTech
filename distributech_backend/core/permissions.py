@@ -2,6 +2,13 @@ from functools import wraps
 from rest_framework.permissions import BasePermission
 from django.http import HttpResponseForbidden
 
+class IsAuthenticatedAndActive(BasePermission):
+    """
+    Permission check for authenticated and active users
+    """
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.is_active
+
 # Role-based permission classes for DRF
 class IsSuperAdmin(BasePermission):
     """
