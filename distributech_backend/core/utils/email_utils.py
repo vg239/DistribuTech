@@ -167,6 +167,98 @@ def send_order_notification(order, recipient_email=None):
     # Send the email
     return send_email([recipient_email], subject, html_content)
 
+def send_status_change_notification(order_status, recipient_email=None):
+    """
+    Send a notification when order status has been changed
+    
+    Args:
+        order_status: OrderStatus object
+        recipient_email: Optional email address (defaults to department manager's email)
+        
+    Returns:
+        Boolean indicating success or failure
+    """
+    # If no recipient provided, use hardcoded manager email
+    # In a real-world scenario, you might want to get the actual department manager's email
+    if not recipient_email:
+        recipient_email = "manager@distributech.com"
+    
+    order = order_status.order
+    
+    # Format email content
+    subject = f"Order #{order.id} Status Changed to {order_status.status}"
+    
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #f0f9ff; padding: 20px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #0ea5e9;">
+            <h1 style="color: #0284c7; margin: 0 0 10px;">Order Status Changed</h1>
+            <p>The status of order #{order.id} has been updated.</p>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h2 style="color: #0284c7; border-bottom: 2px solid #0284c7; padding-bottom: 5px;">Order Details</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Order Number:</th>
+                    <td style="padding: 8px;">#{order.id}</td>
+                </tr>
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Customer:</th>
+                    <td style="padding: 8px;">{order.user.username}</td>
+                </tr>
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Department:</th>
+                    <td style="padding: 8px;">{order.user.department.name}</td>
+                </tr>
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Date Created:</th>
+                    <td style="padding: 8px;">{order.created_at.strftime('%B %d, %Y')}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h2 style="color: #0284c7; border-bottom: 2px solid #0284c7; padding-bottom: 5px;">Status Update</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <th style="text-align: left; padding: 8px;">New Status:</th>
+                    <td style="padding: 8px; font-weight: bold;">{order_status.status}</td>
+                </tr>
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Current Location:</th>
+                    <td style="padding: 8px;">{order_status.current_location or 'Not specified'}</td>
+                </tr>
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Updated At:</th>
+                    <td style="padding: 8px;">{order_status.location_timestamp.strftime('%B %d, %Y %H:%M')}</td>
+                </tr>
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Updated By:</th>
+                    <td style="padding: 8px;">{order_status.updated_by.username if order_status.updated_by else 'System'}</td>
+                </tr>
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Remarks:</th>
+                    <td style="padding: 8px;">{order_status.remarks or 'No remarks'}</td>
+                </tr>
+                <tr>
+                    <th style="text-align: left; padding: 8px;">Expected Delivery:</th>
+                    <td style="padding: 8px;">{order_status.expected_delivery_date.strftime('%B %d, %Y') if order_status.expected_delivery_date else 'Not specified'}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; font-size: 12px; color: #666;">
+            <p>This status update was processed by the DistribuTech system.</p>
+            <p>This is an automated message from DistribuTech Inventory Management System.</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # Send the email
+    return send_email([recipient_email], subject, html_content)
+
 def send_stock_alert(item, stock, recipient_email=None):
     """
     Send a stock alert notification when inventory is low

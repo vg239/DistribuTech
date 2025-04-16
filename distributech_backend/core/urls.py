@@ -11,7 +11,8 @@ from .views import (
 from .order_views import OrderViewSet
 from .stock_views import StockViewSet
 from .views_email import (
-    email_test, public_email_test, order_notification, stock_alert
+    email_test, public_email_test, order_notification, stock_alert,
+    update_order_status
 )
 
 router = DefaultRouter()
@@ -40,6 +41,9 @@ urlpatterns = [
     path('public/email/test/', public_email_test, name='public-email-test'),
     path('orders/<int:order_id>/notify/', order_notification, name='order-notification'),
     path('items/<int:item_id>/stock-alert/', stock_alert, name='stock-alert'),
+    
+    # Order status update endpoint (public)
+    path('public/orders/<int:order_id>/status/', update_order_status, name='update-order-status'),
     
     # Public endpoints that don't require authentication
     path('public/roles/', public_roles, name='public-roles'),
