@@ -10,6 +10,7 @@ from .views import (
 )
 from .order_views import OrderViewSet
 from .stock_views import StockViewSet
+from .chat_views import ConversationViewSet, MessageViewSet
 from .views_email import (
     email_test, public_email_test, order_notification, stock_alert
 )
@@ -25,6 +26,8 @@ router.register(r'order-items', OrderItemViewSet)
 router.register(r'stock', StockViewSet)
 router.register(r'comments', CommentViewSet)
 router.register(r'attachments', AttachmentViewSet)
+router.register(r'conversations', ConversationViewSet)
+router.register(r'messages', MessageViewSet)
 
 # Register action routes manually
 stock_alert_route = StockViewSet.as_view({'post': 'alert'})

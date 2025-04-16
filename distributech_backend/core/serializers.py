@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import (
     User, UserInfo, Role, Department, Order, OrderStatus, 
-    Item, OrderItem, Stock, Comment, Attachment
+    Item, OrderItem, Stock, Comment, Attachment,
+    Conversation, Message
 )
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -133,4 +134,38 @@ class OrderDetailSerializer(OrderSerializer):
     order_statuses = OrderStatusSerializer(many=True, read_only=True, source='orderstatus_set')
     
     class Meta(OrderSerializer.Meta):
-        fields = OrderSerializer.Meta.fields + ['order_items', 'comments', 'attachments', 'order_statuses'] 
+        fields = OrderSerializer.Meta.fields + ['order_items', 'comments', 'attachments', 'order_statuses']
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = UserSerializer(read_only=True)
+    sender_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), source='sender', write_only=True
+    )
+    
+    class Meta:
+        model = Message
+        fields = [
+            'id', 'conversation', 'sender', 'sender_id', 
+            'content', 'timestamp', 'is_read'
+        ]
+        read_only_fields = ['timestamp', 'is_read']
+
+class ConversationSerializer(serializers.ModelSerializer):
+    participants = UserSerializer(many=True, read_only=True)
+    participant_ids = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), source='participants', write_only=True, many=True
+    )
+    
+    class Meta:
+        model = Conversation
+        fields = [
+            'id', 'participants', 'participant_ids', 
+            'started_at', 'updated_at'
+        ]
+        read_only_fields = ['started_at', 'updated_at']
+
+class ConversationDetailSerializer(ConversationSerializer):
+    messages = MessageSerializer(many=True, read_only=True)
+    
+    class Meta(ConversationSerializer.Meta):
+        fields = ConversationSerializer.Meta.fields + ['messages'] 
