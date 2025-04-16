@@ -72,6 +72,13 @@ const Navbar = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
+              <Link to="/chat" className="nav-link">Messages</Link>
+            </motion.div>
+            
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
               <Link to="/profile" className="nav-link">Profile</Link>
             </motion.div>
             
@@ -182,6 +189,7 @@ const Navbar = () => {
                   )}
                   
                   <Link to="/orders" className="nav-link">Orders</Link>
+                  <Link to="/chat" className="nav-link">Messages</Link>
                   <Link to="/profile" className="nav-link">Profile</Link>
                   <button onClick={handleLogout} className="button-outline w-full">Logout</button>
                 </>
