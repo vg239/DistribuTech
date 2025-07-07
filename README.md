@@ -147,6 +147,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgements
 
-- Team Members
+- **Team Members**:
+  - Vatsal Jay Gandhi
+  - Dev Prajapati
+  - Pal Patel
 - Faculty Mentors
 - Open Source Communities
