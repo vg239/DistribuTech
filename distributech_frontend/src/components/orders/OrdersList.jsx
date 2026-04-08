@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import OrderStatusUpdateForm from './OrderStatusUpdateForm';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api';
 
 const OrderStatusBadge = ({ status }) => {
   let color;

@@ -8,8 +8,8 @@ RUN npm install
 
 COPY . .
 
-# Update Vite configuration to listen on all interfaces
-RUN echo 'import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    host: "0.0.0.0",\n    port: 5173,\n    proxy: {\n      "/api": {\n        target: "http://backend:8000",\n        changeOrigin: true,\n      }\n    }\n  }\n});' > vite.config.js
+# Update Vite configuration to listen on all interfaces (no proxy — okube handles discovery)
+RUN echo 'import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    host: "0.0.0.0",\n    port: 5173\n  }\n});' > vite.config.js
 
 EXPOSE 5173
 

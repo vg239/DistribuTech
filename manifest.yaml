@@ -1,0 +1,101 @@
+# DistribuTech — okube deployment manifest
+#
+# IMPORTANT: Before deploying, you need to build and distribute the Docker
+# images to all worker nodes. See the notes at the bottom of this file.
+#
+# Deploy with:
+#   ./okube deploy -f DistribuTech/manifest.yaml --manager <MANAGER_IP>:5556
+
+name: distributech
+
+services:
+  db:
+    image: postgres:16.4-bullseye
+    ports:
+      "5432/tcp": "5432"
+    env:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres_db
+
+  backend:
+    image: distributech-backend:latest
+    ports:
+      "8000/tcp": "8000"
+    env:
+      DB_NAME: postgres_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      # DB_HOST and DB_PORT are auto-injected by okube because of dependsOn: [db]
+      DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: "*"
+      CORS_ALLOW_ALL_ORIGINS: "1"
+    dependsOn: [db]
+    healthCheck: "/api/"
+
+  frontend:
+    image: distributech-frontend:latest
+    ports:
+      "5173/tcp": "5173"
+    env:
+      # BACKEND_HOST and BACKEND_PORT are auto-injected by okube because of dependsOn: [backend]
+      # However, the frontend source code has hardcoded http://localhost:8000 in several files.
+      # See the README section below for the required fix.
+      VITE_API_URL: "http://localhost:8000"
+    dependsOn: [backend]
+
+# ===========================================================================
+# SETUP NOTES
+# ===========================================================================
+#
+# 1. BUILD THE IMAGES
+#    On every worker node (or build once and `docker save/load`):
+#
+#      cd DistribuTech
+#      docker build -t distributech-backend:latest  ./distributech_backend
+#      docker build -t distributech-frontend:latest ./distributech_frontend
+#
+#    The postgres image is pulled automatically from Docker Hub.
+#
+# 2. SERVICE DISCOVERY (automatic)
+#    okube deploys services in dependency order and injects env vars:
+#
+#      db       → starts first
+#      backend  → gets DB_HOST=<worker-ip> and DB_PORT=5432 injected
+#      frontend → gets BACKEND_HOST=<worker-ip> and BACKEND_PORT=8000 injected
+#
+#    Django's settings.py already reads DB_HOST / DB_PORT from the environment,
+#    so the backend connects to the database automatically.
+#
+# 3. FRONTEND FIX REQUIRED
+#    The frontend has hardcoded "http://localhost:8000" in several source files:
+#      - src/contexts/AuthContext.jsx
+#      - src/components/orders/CreateOrder.jsx
+#      - src/components/orders/OrdersList.jsx
+#      - src/components/orders/OrderStatusUpdateForm.jsx
+#
+#    For multi-node deployment these must use the VITE_API_URL env var instead.
+#    Replace every:
+#      const API_URL = 'http://localhost:8000/api';
+#    with:
+#      const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api';
+#
+#    Also, the Dockerfile overwrites vite.config.js with a proxy targeting
+#    "http://backend:8000" — this hostname won't resolve in okube (no Docker DNS).
+#    Either remove the proxy from the Dockerfile's echo command, or replace
+#    "http://backend:8000" with the actual backend address once known.
+#
+#    After modifying, rebuild the frontend image.
+#
+# 4. ACCESSING THE APP
+#    After deploy, okube prints the service addresses:
+#      frontend → http://<WORKER_IP>:5173
+#      backend  → http://<WORKER_IP>:8000
+#
+#    Open the frontend URL from any browser on the same WiFi.
+#
+# 5. SET VITE_API_URL AT DEPLOY TIME
+#    Once you know the backend address from `okube deploy` output, update
+#    VITE_API_URL in this manifest and redeploy, or set it in the frontend's
+#    .env file before building the image:
+#      VITE_API_URL=http://<BACKEND_WORKER_IP>:8000

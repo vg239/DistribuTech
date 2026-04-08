@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api';
 
 // Status options based on the OrderStatusChoices model
 const STATUS_OPTIONS = [
